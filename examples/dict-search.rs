@@ -14,7 +14,7 @@ use std::fs::File;
 use std::io::{self, BufRead, Write};
 use std::process;
 
-use aho_corasick::{Automaton, AcAutomaton, Match};
+use aho_corasick::{AcAutomaton, Automaton, Match};
 use docopt::Docopt;
 use memmap::Mmap;
 
@@ -48,8 +48,8 @@ struct Args {
 
 fn main() {
     let args: Args = Docopt::new(USAGE)
-                            .and_then(|d| d.deserialize())
-                            .unwrap_or_else(|e| e.exit());
+        .and_then(|d| d.deserialize())
+        .unwrap_or_else(|e| e.exit());
     match run(&args) {
         Ok(()) => {}
         Err(err) => {
@@ -111,7 +111,10 @@ fn run(args: &Args) -> Result<(), Box<Error>> {
 }
 
 fn write_matches<A, I>(aut: &A, it: I) -> Result<(), Box<Error>>
-        where A: Automaton<String>, I: Iterator<Item=io::Result<Match>> {
+where
+    A: Automaton<String>,
+    I: Iterator<Item = io::Result<Match>>,
+{
     let mut wtr = csv::Writer::from_writer(io::stdout());
     try!(wtr.serialize(("pattern", "start", "end")));
     for m in it {
@@ -122,10 +125,7 @@ fn write_matches<A, I>(aut: &A, it: I) -> Result<(), Box<Error>>
     Ok(())
 }
 
-fn build_automaton(
-    dict_path: &str,
-    min_len: usize,
-) -> Result<AcAutomaton<String>, Box<Error>> {
+fn build_automaton(dict_path: &str, min_len: usize) -> Result<AcAutomaton<String>, Box<Error>> {
     let buf = io::BufReader::new(try!(File::open(dict_path)));
     let mut lines = Vec::with_capacity(1 << 10);
     for line in buf.lines() {

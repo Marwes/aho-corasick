@@ -129,10 +129,8 @@ use std::fmt;
 use std::iter::FromIterator;
 use std::mem;
 
-pub use self::autiter::{
-    Automaton, Match,
-    Matches, MatchesOverlapping, StreamMatches, StreamMatchesOverlapping,
-};
+pub use self::autiter::{Automaton, Match, Matches, MatchesOverlapping, StreamMatches,
+                        StreamMatchesOverlapping};
 pub use self::full::FullAcAutomaton;
 
 // We're specifying paths explicitly so that we can use
@@ -183,7 +181,7 @@ const DENSE_DEPTH_THRESHOLD: u32 = 1;
 /// The type parameter `P` is the type of the pattern that was used to
 /// construct this AcAutomaton.
 #[derive(Clone)]
-pub struct AcAutomaton<P, T=Dense> {
+pub struct AcAutomaton<P, T = Dense> {
     pats: Vec<P>,
     states: Vec<State<T>>,
     start_bytes: Vec<u8>,
@@ -203,7 +201,9 @@ impl<P: AsRef<[u8]>> AcAutomaton<P> {
     /// The patterns must be convertible to bytes (`&[u8]`) via the `AsRef`
     /// trait.
     pub fn new<I>(pats: I) -> AcAutomaton<P, Dense>
-            where I: IntoIterator<Item=P> {
+    where
+        I: IntoIterator<Item = P>,
+    {
         AcAutomaton::with_transitions(pats)
     }
 }
@@ -216,7 +216,9 @@ impl<P: AsRef<[u8]>, T: Transitions> AcAutomaton<P, T> {
     /// The patterns must be convertible to bytes (`&[u8]`) via the `AsRef`
     /// trait.
     pub fn with_transitions<I>(pats: I) -> AcAutomaton<P, T>
-            where I: IntoIterator<Item=P> {
+    where
+        I: IntoIterator<Item = P>,
+    {
         AcAutomaton {
             pats: vec![], // filled in later, avoid wrath of borrow checker
             states: vec![State::new(0), State::new(0)], // empty and root
@@ -239,13 +241,14 @@ impl<P: AsRef<[u8]>, T: Transitions> AcAutomaton<P, T> {
 
     #[doc(hidden)]
     pub fn heap_bytes(&self) -> usize {
-        self.pats.iter()
+        self.pats
+            .iter()
             .map(|p| mem::size_of::<P>() + p.as_ref().len())
             .sum::<usize>()
-        + self.states.iter()
-              .map(|s| mem::size_of::<State<T>>() + s.heap_bytes())
-              .sum::<usize>()
-        + self.start_bytes.len()
+            + self.states
+                .iter()
+                .map(|s| mem::size_of::<State<T>>() + s.heap_bytes())
+                .sum::<usize>() + self.start_bytes.len()
     }
 }
 
@@ -395,8 +398,7 @@ impl<T: Transitions> State<T> {
     }
 
     fn heap_bytes(&self) -> usize {
-        (self.out.len() * usize_bytes())
-        + self.goto.heap_bytes()
+        (self.out.len() * usize_bytes()) + self.goto.heap_bytes()
     }
 }
 
@@ -496,7 +498,10 @@ impl Transitions for Sparse {
 
 impl<S: AsRef<[u8]>> FromIterator<S> for AcAutomaton<S> {
     /// Create an automaton from an iterator of strings.
-    fn from_iter<T>(it: T) -> AcAutomaton<S> where T: IntoIterator<Item=S> {
+    fn from_iter<T>(it: T) -> AcAutomaton<S>
+    where
+        T: IntoIterator<Item = S>,
+    {
         AcAutomaton::new(it)
     }
 }
@@ -504,8 +509,7 @@ impl<S: AsRef<[u8]>> FromIterator<S> for AcAutomaton<S> {
 // Provide some question debug impls for viewing automatons.
 // The custom impls mostly exist for special showing of sparse maps.
 
-impl<P: AsRef<[u8]> + fmt::Debug, T: Transitions>
-        fmt::Debug for AcAutomaton<P, T> {
+impl<P: AsRef<[u8]> + fmt::Debug, T: Transitions> fmt::Debug for AcAutomaton<P, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use std::iter::repeat;
 
@@ -520,8 +524,13 @@ impl<P: AsRef<[u8]> + fmt::Debug, T: Transitions>
 
 impl<T: Transitions> State<T> {
     fn debug(&self, root: bool) -> String {
-        format!("State {{ depth: {:?}, out: {:?}, fail: {:?}, goto: {{{}}} }}",
-                self.depth, self.out, self.fail, self.goto_string(root))
+        format!(
+            "State {{ depth: {:?}, out: {:?}, fail: {:?}, goto: {{{}}} }}",
+            self.depth,
+            self.out,
+            self.fail,
+            self.goto_string(root)
+        )
     }
 
     fn goto_string(&self, root: bool) -> String {
@@ -552,13 +561,17 @@ impl<T: Transitions> AcAutomaton<String, T> {
             ($w:expr, $($tt:tt)*) => { {write!($w, $($tt)*)}.unwrap() }
         }
 
-        w!(out, r#"
+        w!(
+            out,
+            r#"
 digraph automaton {{
     label=<<FONT POINT-SIZE="20">{}</FONT>>;
     labelloc="l";
     labeljust="l";
     rankdir="LR";
-"#, self.pats.join(", "));
+"#,
+            self.pats.join(", ")
+        );
         for (i, s) in self.states.iter().enumerate().skip(1) {
             let i = i as u32;
             if s.out.is_empty() {
@@ -594,59 +607,90 @@ mod tests {
     use std::collections::HashSet;
     use std::io;
 
-    use quickcheck::{Arbitrary, Gen, quickcheck};
+    use quickcheck::{quickcheck, Arbitrary, Gen};
 
-    use super::{Automaton, AcAutomaton, Match};
+    use super::{AcAutomaton, Automaton, Match};
 
     fn aut_find<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + AsRef<[u8]> {
+    where
+        S: Clone + AsRef<[u8]>,
+    {
         AcAutomaton::new(xs.to_vec()).find(&haystack).collect()
     }
 
     fn aut_finds<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + AsRef<[u8]> {
+    where
+        S: Clone + AsRef<[u8]>,
+    {
         let cur = io::Cursor::new(haystack.as_bytes());
         AcAutomaton::new(xs.to_vec())
-            .stream_find(cur).map(|r| r.unwrap()).collect()
+            .stream_find(cur)
+            .map(|r| r.unwrap())
+            .collect()
     }
 
     fn aut_findf<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + AsRef<[u8]> {
-        AcAutomaton::new(xs.to_vec()).into_full().find(haystack).collect()
+    where
+        S: Clone + AsRef<[u8]>,
+    {
+        AcAutomaton::new(xs.to_vec())
+            .into_full()
+            .find(haystack)
+            .collect()
     }
 
     fn aut_findfs<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + AsRef<[u8]> {
+    where
+        S: Clone + AsRef<[u8]>,
+    {
         let cur = io::Cursor::new(haystack.as_bytes());
         AcAutomaton::new(xs.to_vec())
             .into_full()
-            .stream_find(cur).map(|r| r.unwrap()).collect()
+            .stream_find(cur)
+            .map(|r| r.unwrap())
+            .collect()
     }
 
     fn aut_findo<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + AsRef<[u8]> {
-        AcAutomaton::new(xs.to_vec()).find_overlapping(haystack).collect()
+    where
+        S: Clone + AsRef<[u8]>,
+    {
+        AcAutomaton::new(xs.to_vec())
+            .find_overlapping(haystack)
+            .collect()
     }
 
     fn aut_findos<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + AsRef<[u8]> {
+    where
+        S: Clone + AsRef<[u8]>,
+    {
         let cur = io::Cursor::new(haystack.as_bytes());
         AcAutomaton::new(xs.to_vec())
-            .stream_find_overlapping(cur).map(|r| r.unwrap()).collect()
+            .stream_find_overlapping(cur)
+            .map(|r| r.unwrap())
+            .collect()
     }
 
     fn aut_findfo<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + AsRef<[u8]> {
+    where
+        S: Clone + AsRef<[u8]>,
+    {
         AcAutomaton::new(xs.to_vec())
-            .into_full().find_overlapping(haystack).collect()
+            .into_full()
+            .find_overlapping(haystack)
+            .collect()
     }
 
     fn aut_findfos<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + AsRef<[u8]> {
+    where
+        S: Clone + AsRef<[u8]>,
+    {
         let cur = io::Cursor::new(haystack.as_bytes());
         AcAutomaton::new(xs.to_vec())
             .into_full()
-            .stream_find_overlapping(cur).map(|r| r.unwrap()).collect()
+            .stream_find_overlapping(cur)
+            .map(|r| r.unwrap())
+            .collect()
     }
 
     #[test]
@@ -654,7 +698,11 @@ mod tests {
         let ns = vec!["a"];
         let hay = "za";
         let matches = vec![
-            Match { pati: 0, start: 1, end: 2 },
+            Match {
+                pati: 0,
+                start: 1,
+                end: 2,
+            },
         ];
         assert_eq!(&aut_find(&ns, hay), &matches);
         assert_eq!(&aut_finds(&ns, hay), &matches);
@@ -667,9 +715,21 @@ mod tests {
         let ns = vec!["a"];
         let hay = "zazazzzza";
         let matches = vec![
-            Match { pati: 0, start: 1, end: 2 },
-            Match { pati: 0, start: 3, end: 4 },
-            Match { pati: 0, start: 8, end: 9 },
+            Match {
+                pati: 0,
+                start: 1,
+                end: 2,
+            },
+            Match {
+                pati: 0,
+                start: 3,
+                end: 4,
+            },
+            Match {
+                pati: 0,
+                start: 8,
+                end: 9,
+            },
         ];
         assert_eq!(&aut_find(&ns, hay), &matches);
         assert_eq!(&aut_finds(&ns, hay), &matches);
@@ -681,7 +741,13 @@ mod tests {
     fn one_longer_pattern_one_match() {
         let ns = vec!["abc"];
         let hay = "zazabcz";
-        let matches = vec![ Match { pati: 0, start: 3, end: 6 } ];
+        let matches = vec![
+            Match {
+                pati: 0,
+                start: 3,
+                end: 6,
+            },
+        ];
         assert_eq!(&aut_find(&ns, hay), &matches);
         assert_eq!(&aut_finds(&ns, hay), &matches);
         assert_eq!(&aut_findf(&ns, hay), &matches);
@@ -693,8 +759,16 @@ mod tests {
         let ns = vec!["abc"];
         let hay = "zazabczzzzazzzabc";
         let matches = vec![
-            Match { pati: 0, start: 3, end: 6 },
-            Match { pati: 0, start: 14, end: 17 },
+            Match {
+                pati: 0,
+                start: 3,
+                end: 6,
+            },
+            Match {
+                pati: 0,
+                start: 14,
+                end: 17,
+            },
         ];
         assert_eq!(&aut_find(&ns, hay), &matches);
         assert_eq!(&aut_finds(&ns, hay), &matches);
@@ -706,7 +780,13 @@ mod tests {
     fn many_pattern_one_match() {
         let ns = vec!["a", "b"];
         let hay = "zb";
-        let matches = vec![ Match { pati: 1, start: 1, end: 2 } ];
+        let matches = vec![
+            Match {
+                pati: 1,
+                start: 1,
+                end: 2,
+            },
+        ];
         assert_eq!(&aut_find(&ns, hay), &matches);
         assert_eq!(&aut_finds(&ns, hay), &matches);
         assert_eq!(&aut_findf(&ns, hay), &matches);
@@ -718,9 +798,21 @@ mod tests {
         let ns = vec!["a", "b"];
         let hay = "zbzazzzzb";
         let matches = vec![
-            Match { pati: 1, start: 1, end: 2 },
-            Match { pati: 0, start: 3, end: 4 },
-            Match { pati: 1, start: 8, end: 9 },
+            Match {
+                pati: 1,
+                start: 1,
+                end: 2,
+            },
+            Match {
+                pati: 0,
+                start: 3,
+                end: 4,
+            },
+            Match {
+                pati: 1,
+                start: 8,
+                end: 9,
+            },
         ];
         assert_eq!(&aut_find(&ns, hay), &matches);
         assert_eq!(&aut_finds(&ns, hay), &matches);
@@ -732,7 +824,13 @@ mod tests {
     fn many_longer_pattern_one_match() {
         let ns = vec!["abc", "xyz"];
         let hay = "zazxyzz";
-        let matches = vec![ Match { pati: 1, start: 3, end: 6 } ];
+        let matches = vec![
+            Match {
+                pati: 1,
+                start: 3,
+                end: 6,
+            },
+        ];
         assert_eq!(&aut_find(&ns, hay), &matches);
         assert_eq!(&aut_finds(&ns, hay), &matches);
         assert_eq!(&aut_findf(&ns, hay), &matches);
@@ -744,9 +842,21 @@ mod tests {
         let ns = vec!["abc", "xyz"];
         let hay = "zazxyzzzzzazzzabcxyz";
         let matches = vec![
-            Match { pati: 1, start: 3, end: 6 },
-            Match { pati: 0, start: 14, end: 17 },
-            Match { pati: 1, start: 17, end: 20 },
+            Match {
+                pati: 1,
+                start: 3,
+                end: 6,
+            },
+            Match {
+                pati: 0,
+                start: 14,
+                end: 17,
+            },
+            Match {
+                pati: 1,
+                start: 17,
+                end: 20,
+            },
         ];
         assert_eq!(&aut_find(&ns, hay), &matches);
         assert_eq!(&aut_finds(&ns, hay), &matches);
@@ -759,8 +869,16 @@ mod tests {
         let ns = vec!["abc", "bc"];
         let hay = "zazabcz";
         let matches = vec![
-            Match { pati: 0, start: 3, end: 6 },
-            Match { pati: 1, start: 4, end: 6 },
+            Match {
+                pati: 0,
+                start: 3,
+                end: 6,
+            },
+            Match {
+                pati: 1,
+                start: 4,
+                end: 6,
+            },
         ];
         assert_eq!(&aut_findo(&ns, hay), &matches);
         assert_eq!(&aut_findos(&ns, hay), &matches);
@@ -772,7 +890,13 @@ mod tests {
     fn many_longer_pattern_overlap_one_match_reverse() {
         let ns = vec!["abc", "bc"];
         let hay = "xbc";
-        let matches = vec![ Match { pati: 1, start: 1, end: 3 } ];
+        let matches = vec![
+            Match {
+                pati: 1,
+                start: 1,
+                end: 3,
+            },
+        ];
         assert_eq!(&aut_findo(&ns, hay), &matches);
         assert_eq!(&aut_findos(&ns, hay), &matches);
         assert_eq!(&aut_findfo(&ns, hay), &matches);
@@ -784,12 +908,36 @@ mod tests {
         let ns = vec!["abc", "bc", "c"];
         let hay = "zzzabczzzbczzzc";
         let matches = vec![
-            Match { pati: 0, start: 3, end: 6 },
-            Match { pati: 1, start: 4, end: 6 },
-            Match { pati: 2, start: 5, end: 6 },
-            Match { pati: 1, start: 9, end: 11 },
-            Match { pati: 2, start: 10, end: 11 },
-            Match { pati: 2, start: 14, end: 15 },
+            Match {
+                pati: 0,
+                start: 3,
+                end: 6,
+            },
+            Match {
+                pati: 1,
+                start: 4,
+                end: 6,
+            },
+            Match {
+                pati: 2,
+                start: 5,
+                end: 6,
+            },
+            Match {
+                pati: 1,
+                start: 9,
+                end: 11,
+            },
+            Match {
+                pati: 2,
+                start: 10,
+                end: 11,
+            },
+            Match {
+                pati: 2,
+                start: 14,
+                end: 15,
+            },
         ];
         assert_eq!(&aut_findo(&ns, hay), &matches);
         assert_eq!(&aut_findos(&ns, hay), &matches);
@@ -802,12 +950,36 @@ mod tests {
         let ns = vec!["abc", "bc", "c"];
         let hay = "zzzczzzbczzzabc";
         let matches = vec![
-            Match { pati: 2, start: 3, end: 4 },
-            Match { pati: 1, start: 7, end: 9 },
-            Match { pati: 2, start: 8, end: 9 },
-            Match { pati: 0, start: 12, end: 15 },
-            Match { pati: 1, start: 13, end: 15 },
-            Match { pati: 2, start: 14, end: 15 },
+            Match {
+                pati: 2,
+                start: 3,
+                end: 4,
+            },
+            Match {
+                pati: 1,
+                start: 7,
+                end: 9,
+            },
+            Match {
+                pati: 2,
+                start: 8,
+                end: 9,
+            },
+            Match {
+                pati: 0,
+                start: 12,
+                end: 15,
+            },
+            Match {
+                pati: 1,
+                start: 13,
+                end: 15,
+            },
+            Match {
+                pati: 2,
+                start: 14,
+                end: 15,
+            },
         ];
         assert_eq!(&aut_findo(&ns, hay), &matches);
         assert_eq!(&aut_findos(&ns, hay), &matches);
@@ -839,22 +1011,28 @@ mod tests {
     impl Arbitrary for SmallAscii {
         fn arbitrary<G: Gen>(g: &mut G) -> SmallAscii {
             use std::char::from_u32;
-            SmallAscii((0..2)
-                       .map(|_| from_u32(g.gen_range(97, 123)).unwrap())
-                       .collect())
+            SmallAscii(
+                (0..2)
+                    .map(|_| from_u32(g.gen_range(97, 123)).unwrap())
+                    .collect(),
+            )
         }
 
-        fn shrink(&self) -> Box<Iterator<Item=SmallAscii>> {
+        fn shrink(&self) -> Box<Iterator<Item = SmallAscii>> {
             Box::new(self.0.shrink().map(SmallAscii))
         }
     }
 
     impl From<SmallAscii> for String {
-        fn from(s: SmallAscii) -> String { s.0 }
+        fn from(s: SmallAscii) -> String {
+            s.0
+        }
     }
 
     impl AsRef<[u8]> for SmallAscii {
-        fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+        fn as_ref(&self) -> &[u8] {
+            self.0.as_ref()
+        }
     }
 
     // This is the same arbitrary impl as `String`, except it has a bias toward
@@ -865,7 +1043,10 @@ mod tests {
     impl Arbitrary for BiasAscii {
         fn arbitrary<G: Gen>(g: &mut G) -> BiasAscii {
             use std::char::from_u32;
-            let size = { let s = g.size(); g.gen_range(0, s) };
+            let size = {
+                let s = g.size();
+                g.gen_range(0, s)
+            };
             let mut s = String::with_capacity(size);
             for _ in 0..size {
                 if g.gen_weighted_bool(3) {
@@ -879,15 +1060,16 @@ mod tests {
             BiasAscii(s)
         }
 
-        fn shrink(&self) -> Box<Iterator<Item=BiasAscii>> {
+        fn shrink(&self) -> Box<Iterator<Item = BiasAscii>> {
             Box::new(self.0.shrink().map(BiasAscii))
         }
     }
 
     fn naive_find<S>(xs: &[S], haystack: &str) -> Vec<Match>
-            where S: Clone + Into<String> {
-        let needles: Vec<String> =
-            xs.to_vec().into_iter().map(Into::into).collect();
+    where
+        S: Clone + Into<String>,
+    {
+        let needles: Vec<String> = xs.to_vec().into_iter().map(Into::into).collect();
         let mut matches = vec![];
         for hi in 0..haystack.len() {
             for (pati, needle) in needles.iter().enumerate() {
@@ -895,7 +1077,7 @@ mod tests {
                 if needle.len() == 0 || needle.len() > haystack.len() - hi {
                     continue;
                 }
-                if needle == &haystack.as_bytes()[hi..hi+needle.len()] {
+                if needle == &haystack.as_bytes()[hi..hi + needle.len()] {
                     matches.push(Match {
                         pati: pati,
                         start: hi,

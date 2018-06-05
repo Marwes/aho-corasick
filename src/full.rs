@@ -1,12 +1,8 @@
 use std::fmt;
 use std::mem;
 
-use super::{
-    FAIL_STATE,
-    StateIdx, AcAutomaton, Transitions, Match,
-    usize_bytes, vec_bytes,
-};
 use super::autiter::Automaton;
+use super::{usize_bytes, vec_bytes, AcAutomaton, Match, StateIdx, Transitions, FAIL_STATE};
 
 /// A complete Aho-Corasick automaton.
 ///
@@ -19,7 +15,7 @@ use super::autiter::Automaton;
 #[derive(Clone)]
 pub struct FullAcAutomaton<P> {
     pats: Vec<P>,
-    trans: Vec<StateIdx>,  // row-major, where states are rows
+    trans: Vec<StateIdx>, // row-major, where states are rows
     out: Vec<Vec<usize>>, // indexed by StateIdx
     start_bytes: Vec<u8>,
 }
@@ -42,26 +38,26 @@ impl<P: AsRef<[u8]>> FullAcAutomaton<P> {
 
     #[doc(hidden)]
     pub fn memory_usage(&self) -> usize {
-        self.pats.iter()
+        self.pats
+            .iter()
             .map(|p| vec_bytes() + p.as_ref().len())
-            .sum::<usize>()
-        + (4 * self.trans.len())
-        + self.out.iter()
-              .map(|v| vec_bytes() + (usize_bytes() * v.len()))
-              .sum::<usize>()
-        + self.start_bytes.len()
+            .sum::<usize>() + (4 * self.trans.len())
+            + self.out
+                .iter()
+                .map(|v| vec_bytes() + (usize_bytes() * v.len()))
+                .sum::<usize>() + self.start_bytes.len()
     }
 
     #[doc(hidden)]
     pub fn heap_bytes(&self) -> usize {
-        self.pats.iter()
+        self.pats
+            .iter()
             .map(|p| mem::size_of::<P>() + p.as_ref().len())
-            .sum::<usize>()
-        + (4 * self.trans.len())
-        + self.out.iter()
-              .map(|v| vec_bytes() + (usize_bytes() * v.len()))
-              .sum::<usize>()
-        + self.start_bytes.len()
+            .sum::<usize>() + (4 * self.trans.len())
+            + self.out
+                .iter()
+                .map(|v| vec_bytes() + (usize_bytes() * v.len()))
+                .sum::<usize>() + self.start_bytes.len()
     }
 
     fn set(&mut self, si: StateIdx, i: u8, goto: StateIdx) {
