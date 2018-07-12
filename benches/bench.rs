@@ -1,4 +1,5 @@
 #![feature(test)]
+#![cfg_attr(rustfmt, rustfmt_skip)]
 
 extern crate aho_corasick;
 extern crate test;
