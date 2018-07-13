@@ -64,7 +64,8 @@ impl<P: AsRef<[u8]>> FullAcAutomaton<P> {
         + self.start_bytes.len()
     }
 
-    fn set(&mut self, si: StateIdx, i: u8, goto: StateIdx) {
+    #[doc(hidden)]
+    pub fn set(&mut self, si: StateIdx, i: u8, goto: StateIdx) {
         let ns = self.num_states();
         self.trans[i as usize * ns + si as usize] = goto;
     }
@@ -74,6 +75,15 @@ impl<P: AsRef<[u8]>> FullAcAutomaton<P> {
     pub fn num_states(&self) -> usize {
         self.out.len()
     }
+
+    #[inline]
+    #[doc(hidden)]
+    pub fn next_state_cell(&self, si: StateIdx, i: u8) -> &::std::cell::Cell<StateIdx> {
+        let at = i as usize * self.num_states() + si as usize;
+        // FIXME
+        unsafe { ::std::mem::transmute(self.trans.get_unchecked(at)) }
+    }
+
 }
 
 impl<P: AsRef<[u8]>> Automaton<P> for FullAcAutomaton<P> {
@@ -129,7 +139,7 @@ impl<P: AsRef<[u8]>> FullAcAutomaton<P> {
         let first_fail_state = current_state.fail;
         current_state.for_each_transition(move |b, maybe_si| {
             let goto = if maybe_si == FAIL_STATE {
-                ac.memoized_next_state(self, si, first_fail_state, b)
+                ac.memoized_next_state(self, first_fail_state, b)
             } else {
                 maybe_si
             };

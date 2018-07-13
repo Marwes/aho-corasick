@@ -251,23 +251,27 @@ impl<P: AsRef<[u8]>, T: Transitions> AcAutomaton<P, T> {
     // The states of `full_automaton` should be set for all states < si
     fn memoized_next_state(
         &self,
-        full_automaton: &FullAcAutomaton<P>,
-        current_si: StateIdx,
+        full_automaton: &mut FullAcAutomaton<P>,
         mut si: StateIdx,
         b: u8,
     ) -> StateIdx {
         loop {
-            if si < current_si {
-                return full_automaton.next_state(si, b);
+            let maybe_si_cell = full_automaton.next_state_cell(si, b);
+            if maybe_si_cell.get() != FAIL_STATE {
+                si = maybe_si_cell.get();
+                break;
             }
             let state = &self.states[si as usize];
             let maybe_si = state.goto(b);
             if maybe_si != FAIL_STATE {
-                return maybe_si;
+                si = maybe_si;
+                maybe_si_cell.set(si);
+                break;
             } else {
                 si = state.fail;
             }
         }
+        si
     }
 }
 
