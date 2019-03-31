@@ -149,14 +149,21 @@ impl<'a> Iterator for ByteClassRepresentatives<'a> {
 /// This particular representation only permits contiguous ranges of bytes to
 /// be in the same equivalence class, which means that we can never discover
 /// the true minimal set of equivalence classes.
-#[derive(Debug)]
-pub struct ByteClassBuilder(Vec<bool>);
+pub struct ByteClassBuilder([bool; 256]);
+
+impl fmt::Debug for ByteClassBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("ByteClassBuilder")
+            .field(&&self.0[..])
+            .finish()
+    }
+}
 
 impl ByteClassBuilder {
     /// Create a new builder of byte classes where all bytes are part of the
     /// same equivalence class.
     pub fn new() -> ByteClassBuilder {
-        ByteClassBuilder(vec![false; 256])
+        ByteClassBuilder([false; 256])
     }
 
     /// Indicate the the range of byte given (inclusive) can discriminate a
