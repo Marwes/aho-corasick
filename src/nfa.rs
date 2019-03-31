@@ -711,7 +711,7 @@ impl<'a, S: StateID> Compiler<'a, S> {
     ///
     /// The trick comes when searching a subject string like 'abcef'. We'll
     /// initially follow the transition from S0 to S1 and wind up in S3 after
-    /// observng the 'c' byte. At this point, the next byte is 'e' but state
+    /// observing the 'c' byte. At this point, the next byte is 'e' but state
     /// S3 has no transition for 'e', so the search fails. We then would need
     /// to restart the search at the next position in 'abcef', which
     /// corresponds to 'b'. The match would fail, but the next search starting

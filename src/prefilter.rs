@@ -125,15 +125,30 @@ impl PrefilterState {
 /// In some cases, a heuristic frequency analysis may determine that it would
 /// be better not to use this prefilter even when there are 3 or fewer distinct
 /// starting bytes.
-#[derive(Clone, Debug)]
 pub struct StartBytesBuilder {
-    byteset: Vec<bool>,
+    byteset: [bool; 256],
+}
+
+impl Clone for StartBytesBuilder {
+    fn clone(&self) -> Self {
+        StartBytesBuilder {
+            byteset: self.byteset,
+        }
+    }
+}
+
+impl fmt::Debug for StartBytesBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("StartBytesBuilder")
+            .field("byteset", &&self.byteset[..])
+            .finish()
+    }
 }
 
 impl StartBytesBuilder {
     /// Create a new builder for constructing a start byte prefilter.
     pub fn new() -> StartBytesBuilder {
-        StartBytesBuilder { byteset: vec![false; 256] }
+        StartBytesBuilder { byteset: [false; 256] }
     }
 
     /// Build the starting bytes prefilter.
