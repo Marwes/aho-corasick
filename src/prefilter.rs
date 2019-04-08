@@ -4,6 +4,7 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use memchr::{memchr, memchr2, memchr3};
 
 use byte_map::ByteMap;
+use AllBytesIter;
 
 /// A prefilter describes the behavior of fast literal scanners for quickly
 /// skipping past bytes in the haystack that we know cannot possibly
@@ -153,8 +154,7 @@ impl StartBytesBuilder {
     /// is returned.
     pub fn build(&self) -> Option<PrefilterObj> {
         let (mut bytes, mut len) = ([0; 3], 0);
-        for b in 0..256usize {
-            let b = b as u8;
+        for b in AllBytesIter::new() {
             if !self.byteset[b] {
                 continue;
             }
