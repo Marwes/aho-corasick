@@ -198,6 +198,7 @@ pub use state_id::StateID;
 mod ahocorasick;
 mod automaton;
 mod buffer;
+mod byte_map;
 mod dfa;
 mod error;
 mod classes;
@@ -287,3 +288,35 @@ impl Match {
         }
     }
 }
+
+/// An iterator over every byte value.
+///
+/// We use this instead of (0..256).map(|b| b as u8) because this optimizes
+/// better in debug builds.
+///
+/// We also use this instead of 0..=255 because we're targeting Rust 1.24 and
+/// inclusive range syntax was stabilized in Rust 1.26. We can get rid of this
+/// once our MSRV is Rust 1.26 or newer.
+#[derive(Debug)]
+struct AllBytesIter(u16);
+
+impl AllBytesIter {
+    fn new() -> AllBytesIter {
+        AllBytesIter(0)
+    }
+}
+
+impl Iterator for AllBytesIter {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 >= 256 {
+            None
+        } else {
+            let b = self.0 as u8;
+            self.0 += 1;
+            Some(b)
+        }
+    }
+}
+

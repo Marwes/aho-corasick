@@ -1,18 +1,20 @@
 use std::fmt;
 
+use byte_map::ByteMap;
+
 /// A representation of byte oriented equivalence classes.
 ///
 /// This is used in an FSM to reduce the size of the transition table. This can
 /// have a particularly large impact not only on the total size of an FSM, but
 /// also on compile times.
 #[derive(Clone, Copy)]
-pub struct ByteClasses([u8; 256]);
+pub struct ByteClasses(ByteMap<u8>);
 
 impl ByteClasses {
     /// Creates a new set of equivalence classes where all bytes are mapped to
     /// the same class.
     pub fn empty() -> ByteClasses {
-        ByteClasses([0; 256])
+        ByteClasses(ByteMap::new(0))
     }
 
     /// Creates a new set of equivalence classes where each byte belongs to
@@ -28,15 +30,13 @@ impl ByteClasses {
     /// Set the equivalence class for the given byte.
     #[inline]
     pub fn set(&mut self, byte: u8, class: u8) {
-        self.0[byte as usize] = class;
+        self.0[byte] = class;
     }
 
     /// Get the equivalence class for the given byte.
     #[inline]
     pub fn get(&self, byte: u8) -> u8 {
-        // SAFETY: This is safe because all dense transitions have
-        // exactly 256 elements, so all u8 values are valid indices.
-        unsafe { *self.0.get_unchecked(byte as usize) }
+        self.0[byte]
     }
 
     /// Return the total number of elements in the alphabet represented by
@@ -73,14 +73,14 @@ impl ByteClasses {
     /// The second element in the tuple indicates the number of elements in
     /// the array.
     fn elements(&self, equiv: u8) -> ([u8; 256], usize) {
-        let (mut array, mut len) = ([0; 256], 0);
+        let (mut array, mut len) = (ByteMap::new(0), 0);
         for b in 0..256 {
             if self.get(b as u8) == equiv {
-                array[len] = b as u8;
+                array[len as u8] = b as u8;
                 len += 1;
             }
         }
-        (array, len)
+        (array.into_inner(), len)
     }
 }
 
@@ -150,21 +150,14 @@ impl<'a> Iterator for ByteClassRepresentatives<'a> {
 /// This particular representation only permits contiguous ranges of bytes to
 /// be in the same equivalence class, which means that we can never discover
 /// the true minimal set of equivalence classes.
-pub struct ByteClassBuilder([bool; 256]);
-
-impl fmt::Debug for ByteClassBuilder {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("ByteClassBuilder")
-            .field(&&self.0[..])
-            .finish()
-    }
-}
+#[derive(Debug)]
+pub struct ByteClassBuilder(ByteMap<bool>);
 
 impl ByteClassBuilder {
     /// Create a new builder of byte classes where all bytes are part of the
     /// same equivalence class.
     pub fn new() -> ByteClassBuilder {
-        ByteClassBuilder([false; 256])
+        ByteClassBuilder(ByteMap::new(false))
     }
 
     /// Indicate the the range of byte given (inclusive) can discriminate a
@@ -172,9 +165,9 @@ impl ByteClassBuilder {
     pub fn set_range(&mut self, start: u8, end: u8) {
         debug_assert!(start <= end);
         if start > 0 {
-            self.0[start as usize - 1] = true;
+            self.0[start - 1] = true;
         }
-        self.0[end as usize] = true;
+        self.0[end] = true;
     }
 
     /// Build byte classes that map all byte values to their corresponding

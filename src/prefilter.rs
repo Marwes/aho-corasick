@@ -3,6 +3,8 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use memchr::{memchr, memchr2, memchr3};
 
+use byte_map::ByteMap;
+
 /// A prefilter describes the behavior of fast literal scanners for quickly
 /// skipping past bytes in the haystack that we know cannot possibly
 /// participate in a match.
@@ -125,8 +127,9 @@ impl PrefilterState {
 /// In some cases, a heuristic frequency analysis may determine that it would
 /// be better not to use this prefilter even when there are 3 or fewer distinct
 /// starting bytes.
+#[derive(Debug)]
 pub struct StartBytesBuilder {
-    byteset: [bool; 256],
+    byteset: ByteMap<bool>,
 }
 
 impl Clone for StartBytesBuilder {
@@ -137,18 +140,10 @@ impl Clone for StartBytesBuilder {
     }
 }
 
-impl fmt::Debug for StartBytesBuilder {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("StartBytesBuilder")
-            .field("byteset", &&self.byteset[..])
-            .finish()
-    }
-}
-
 impl StartBytesBuilder {
     /// Create a new builder for constructing a start byte prefilter.
     pub fn new() -> StartBytesBuilder {
-        StartBytesBuilder { byteset: [false; 256] }
+        StartBytesBuilder { byteset: ByteMap::new(false) }
     }
 
     /// Build the starting bytes prefilter.
@@ -158,7 +153,8 @@ impl StartBytesBuilder {
     /// is returned.
     pub fn build(&self) -> Option<PrefilterObj> {
         let (mut bytes, mut len) = ([0; 3], 0);
-        for b in 0..256 {
+        for b in 0..256usize {
+            let b = b as u8;
             if !self.byteset[b] {
                 continue;
             }
@@ -175,7 +171,7 @@ impl StartBytesBuilder {
             if b > 0x7F {
                 return None;
             }
-            bytes[len] = b as u8;
+            bytes[len] = b;
             len += 1;
         }
         match len {
@@ -207,7 +203,7 @@ impl StartBytesBuilder {
     /// In general, all possible starting bytes for an automaton should be
     /// added to this builder before attempting to construct the prefilter.
     pub fn add(&mut self, byte: u8) {
-        self.byteset[byte as usize] = true;
+        self.byteset[byte] = true;
     }
 }
 

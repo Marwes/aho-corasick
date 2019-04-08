@@ -2,15 +2,15 @@ use std::collections::VecDeque;
 use std::cmp;
 use std::fmt;
 use std::mem::size_of;
-use std::ops::{Index, IndexMut};
 
 use ahocorasick::MatchKind;
 use automaton::Automaton;
+use byte_map::ByteMap;
 use classes::{ByteClasses, ByteClassBuilder};
 use error::Result;
 use prefilter::{self, Prefilter, PrefilterObj};
 use state_id::{StateID, dead_id, fail_id, usize_to_state_id};
-use Match;
+use {AllBytesIter, Match};
 
 /// The identifier for a pattern, which is simply the position of the pattern
 /// in the sequence of patterns given by the caller.
@@ -186,7 +186,7 @@ impl<S: StateID> NFA<S> {
     }
 
     fn add_dense_state(&mut self, depth: usize) -> Result<S> {
-        let trans = Transitions::Dense(Dense::new());
+        let trans = Transitions::Dense(Box::new(ByteMap::new(fail_id())));
         let id = usize_to_state_id(self.states.len())?;
         self.states.push(State {
             trans,
@@ -323,40 +323,6 @@ impl<S: StateID> State<S> {
     }
 }
 
-#[derive(Clone, Debug)]
-struct Dense<S>(Vec<S>);
-
-impl<S: StateID> Dense<S> {
-    fn new() -> Self {
-        Dense(vec![fail_id(); 256])
-    }
-
-    #[inline(always)]
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-}
-
-impl<S> Index<u8> for Dense<S> {
-    type Output = S;
-
-    #[inline(always)]
-    fn index(&self, i: u8) -> &S {
-        // SAFETY: This is safe because all dense transitions have
-        // exactly 256 elements, so all u8 values are valid indices.
-        unsafe { self.0.get_unchecked(i as usize) }
-    }
-}
-
-impl<S> IndexMut<u8> for Dense<S> {
-    #[inline(always)]
-    fn index_mut(&mut self, i: u8) -> &mut S {
-        // SAFETY: This is safe because all dense transitions have
-        // exactly 256 elements, so all u8 values are valid indices.
-        unsafe { self.0.get_unchecked_mut(i as usize) }
-    }
-}
-
 /// A representation of transitions in an NFA.
 ///
 /// Transitions have either a sparse representation, which is slower for
@@ -371,7 +337,7 @@ impl<S> IndexMut<u8> for Dense<S> {
 #[derive(Clone, Debug)]
 enum Transitions<S> {
     Sparse(Vec<(u8, S)>),
-    Dense(Dense<S>),
+    Dense(Box<ByteMap<S>>),
 }
 
 impl<S: StateID> Transitions<S> {
@@ -1128,37 +1094,6 @@ impl<'a, S: StateID> Compiler<'a, S> {
     /// Returns the match kind configured on the underlying builder.
     fn match_kind(&self) -> MatchKind {
         self.builder.match_kind
-    }
-}
-
-/// An iterator over every byte value.
-///
-/// We use this instead of (0..256).map(|b| b as u8) because this optimizes
-/// better in debug builds.
-///
-/// We also use this instead of 0..=255 because we're targeting Rust 1.24 and
-/// inclusive range syntax was stabilized in Rust 1.26. We can get rid of this
-/// once our MSRV is Rust 1.26 or newer.
-#[derive(Debug)]
-struct AllBytesIter(u16);
-
-impl AllBytesIter {
-    fn new() -> AllBytesIter {
-        AllBytesIter(0)
-    }
-}
-
-impl Iterator for AllBytesIter {
-    type Item = u8;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.0 >= 256 {
-            None
-        } else {
-            let b = self.0 as u8;
-            self.0 += 1;
-            Some(b)
-        }
     }
 }
 
